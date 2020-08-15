@@ -1,0 +1,54 @@
+version: "3"
+
+services:
+  db:
+    image: supabase/postgres
+    ports:
+      - "5432:5432"
+    expose:
+      - "5432"
+    environment:
+      POSTGRES_DB: app_db
+      POSTGRES_USER: app_user
+      POSTGRES_PASSWORD: password
+    volumes:
+      - "./pgdata:/var/lib/postgresql/data"
+  server:
+    image: postgrest/postgrest
+    ports:
+      - "4000:4000"
+    expose:
+      - "4000"
+    links:
+      - db:db
+    environment:
+      PGRST_DB_URI: postgres://authenticator:password@db:5432/app_db
+      PGRST_DB_SCHEMA: api
+      PGRST_DB_ANON_ROLE: api_anon
+      PGRST_SERVER_PORT: "4000"
+      PGRST_JWT_SECRET: YmQ3YjMzMDZmY2JmNzY2NGRjMjhhZThj
+    volumes:
+      - "./certs:/certs"
+    depends_on:
+      - db
+  dbmate:
+    image: amacneil/dbmate
+    env_file:
+      - .env
+    links:
+      - db:db
+    volumes:
+      - ./db:/db
+    command: --wait up
+    depends_on:
+      - db
+  swagger:
+    image: swaggerapi/swagger-ui
+    ports:
+      - "8080:8080"
+    expose:
+      - "8080"
+    environment:
+      API_URL: http://localhost:4000/
+    depends_on:
+      - server
